@@ -140,8 +140,7 @@
   }
 
   .img-zoom img {
-    @apply transition-transform duration-[900ms];
-    transition-timing-function: var(--ease-elegant);
+    transition: transform 900ms var(--ease-elegant);
   }
   .img-zoom:hover img { transform: scale(1.06); }
 }
