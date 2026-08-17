@@ -14,7 +14,108 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      collections: {
+        Row: {
+          created_at: string
+          description: string
+          featured: boolean
+          handle: string
+          id: string
+          image_url: string | null
+          kind: string
+          parent: string | null
+          sort_order: number
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          featured?: boolean
+          handle: string
+          id?: string
+          image_url?: string | null
+          kind?: string
+          parent?: string | null
+          sort_order?: number
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          featured?: boolean
+          handle?: string
+          id?: string
+          image_url?: string | null
+          kind?: string
+          parent?: string | null
+          sort_order?: number
+          title?: string
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          available: boolean
+          brand: string
+          category: string
+          collections: string[]
+          created_at: string
+          currency: string
+          description: string
+          description_html: string
+          gender: string
+          handle: string
+          id: string
+          images: Json
+          options: Json
+          price_max: number | null
+          price_min: number | null
+          product_type: string
+          title: string
+          variants: Json
+        }
+        Insert: {
+          available?: boolean
+          brand?: string
+          category?: string
+          collections?: string[]
+          created_at?: string
+          currency?: string
+          description?: string
+          description_html?: string
+          gender?: string
+          handle: string
+          id?: string
+          images?: Json
+          options?: Json
+          price_max?: number | null
+          price_min?: number | null
+          product_type?: string
+          title: string
+          variants?: Json
+        }
+        Update: {
+          available?: boolean
+          brand?: string
+          category?: string
+          collections?: string[]
+          created_at?: string
+          currency?: string
+          description?: string
+          description_html?: string
+          gender?: string
+          handle?: string
+          id?: string
+          images?: Json
+          options?: Json
+          price_max?: number | null
+          price_min?: number | null
+          product_type?: string
+          title?: string
+          variants?: Json
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
