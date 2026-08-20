@@ -1,36 +1,43 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Search, ShoppingBag, Heart, User, Menu, X, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCartStore } from "@/stores/cartStore";
+import { fetchCollections } from "@/lib/catalog";
 import AnnouncementBar from "./AnnouncementBar";
 
-const megaMenu: Record<string, { title: string; links: { label: string; to: string }[] }[]> = {
+type MenuColumn = { title: string; links: { label: string; to: string }[] };
+
+const megaMenu: Record<string, MenuColumn[]> = {
   Men: [
     {
       title: "Clothing",
       links: [
-        { label: "New Arrivals", to: "/collections/men?filter=new" },
-        { label: "T-Shirts", to: "/collections/men?type=t-shirts" },
-        { label: "Shirts", to: "/collections/men?type=shirts" },
-        { label: "Jackets & Coats", to: "/collections/men?type=jackets" },
-        { label: "Trousers", to: "/collections/men?type=trousers" },
+        { label: "All Menswear", to: "/collections/men-clothing" },
+        { label: "T-Shirts", to: "/collections/type-t-shirts" },
+        { label: "Shirts", to: "/collections/type-shirts" },
+        { label: "Jackets & Coats", to: "/collections/type-jackets" },
+        { label: "Knitwear", to: "/collections/type-knitwears" },
+        { label: "Trousers & Jeans", to: "/collections/type-jeans" },
       ],
     },
     {
       title: "Footwear",
       links: [
-        { label: "Sneakers", to: "/collections/shoes?type=sneakers" },
-        { label: "Formal Shoes", to: "/collections/shoes?type=formal" },
-        { label: "Boots", to: "/collections/shoes?type=boots" },
+        { label: "All Shoes", to: "/collections/men-shoes" },
+        { label: "Sneakers", to: "/collections/type-sneakers" },
+        { label: "Loafers", to: "/collections/type-loafers" },
+        { label: "Boots", to: "/collections/type-boots" },
       ],
     },
     {
-      title: "Shop by Style",
+      title: "Accessories",
       links: [
-        { label: "Streetwear", to: "/collections/men?style=streetwear" },
-        { label: "Formal", to: "/collections/men?style=formal" },
-        { label: "Luxury", to: "/collections/men?style=luxury" },
+        { label: "Bags", to: "/collections/men-bags" },
+        { label: "Wallets", to: "/collections/type-wallets" },
+        { label: "Eyewear", to: "/collections/men-eyewear" },
+        { label: "Hats", to: "/collections/type-hats" },
       ],
     },
   ],
@@ -38,27 +45,29 @@ const megaMenu: Record<string, { title: string; links: { label: string; to: stri
     {
       title: "Clothing",
       links: [
-        { label: "New Arrivals", to: "/collections/women?filter=new" },
-        { label: "Dresses", to: "/collections/women?type=dresses" },
-        { label: "Tops", to: "/collections/women?type=tops" },
-        { label: "Outerwear", to: "/collections/women?type=outerwear" },
-        { label: "Skirts & Pants", to: "/collections/women?type=bottoms" },
+        { label: "All Womenswear", to: "/collections/women-clothing" },
+        { label: "Dresses", to: "/collections/type-dresses" },
+        { label: "Tops", to: "/collections/type-tops" },
+        { label: "Coats", to: "/collections/type-coats" },
+        { label: "Skirts", to: "/collections/type-skirts" },
       ],
     },
     {
       title: "Footwear",
       links: [
-        { label: "Heels", to: "/collections/shoes?type=heels" },
-        { label: "Sneakers", to: "/collections/shoes?type=sneakers" },
-        { label: "Flats", to: "/collections/shoes?type=flats" },
+        { label: "All Shoes", to: "/collections/women-shoes" },
+        { label: "Heels", to: "/collections/type-heels" },
+        { label: "Sneakers", to: "/collections/type-sneakers" },
+        { label: "Sandals", to: "/collections/type-sandals" },
       ],
     },
     {
-      title: "Shop by Style",
+      title: "Bags & More",
       links: [
-        { label: "Casual", to: "/collections/women?style=casual" },
-        { label: "Formal", to: "/collections/women?style=formal" },
-        { label: "Summer", to: "/collections/women?style=summer" },
+        { label: "Handbags", to: "/collections/women-bags" },
+        { label: "Shoulder Bags", to: "/collections/type-shoulder-bags" },
+        { label: "Eyewear", to: "/collections/women-eyewear" },
+        { label: "Fragrance", to: "/collections/women-fragrance" },
       ],
     },
   ],
@@ -66,10 +75,12 @@ const megaMenu: Record<string, { title: string; links: { label: string; to: stri
     {
       title: "Categories",
       links: [
-        { label: "All Sneakers", to: "/collections/shoes?type=sneakers" },
-        { label: "Formal", to: "/collections/shoes?type=formal" },
-        { label: "Boots", to: "/collections/shoes?type=boots" },
-        { label: "Sandals", to: "/collections/shoes?type=sandals" },
+        { label: "All Shoes", to: "/collections/shoes" },
+        { label: "Sneakers", to: "/collections/type-sneakers" },
+        { label: "Boots", to: "/collections/type-boots" },
+        { label: "Loafers", to: "/collections/type-loafers" },
+        { label: "Heels", to: "/collections/type-heels" },
+        { label: "Sandals", to: "/collections/type-sandals" },
       ],
     },
   ],
@@ -77,10 +88,13 @@ const megaMenu: Record<string, { title: string; links: { label: string; to: stri
     {
       title: "Shop",
       links: [
-        { label: "Bags", to: "/collections/accessories?type=bags" },
-        { label: "Jewelry", to: "/collections/accessories?type=jewelry" },
-        { label: "Belts", to: "/collections/accessories?type=belts" },
-        { label: "Sunglasses", to: "/collections/accessories?type=sunglasses" },
+        { label: "All Accessories", to: "/collections/accessories" },
+        { label: "Handbags", to: "/collections/bags" },
+        { label: "Wallets & Card Cases", to: "/collections/type-wallets" },
+        { label: "Jewellery", to: "/collections/type-necklaces" },
+        { label: "Scarves", to: "/collections/type-scarves" },
+        { label: "Eyewear", to: "/collections/eyewear" },
+        { label: "Fragrance", to: "/collections/fragrance" },
       ],
     },
   ],
@@ -90,11 +104,25 @@ const primaryLinks = ["Men", "Women", "Shoes", "Accessories"] as const;
 
 export default function Header() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const totalItems = useCartStore((s) => s.items.reduce((sum, i) => sum + i.quantity, 0));
   const openCart = useCartStore((s) => s.openCart);
   const [scrolled, setScrolled] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [term, setTerm] = useState("");
+
+  const { data: brands = [] } = useQuery({
+    queryKey: ["collections", "brand"],
+    queryFn: () => fetchCollections("brand"),
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const brandMenu: MenuColumn[] = [0, 1, 2].map((col) => ({
+    title: col === 0 ? "Designers" : " ".repeat(col + 1),
+    links: brands.slice(col * 8, col * 8 + 8).map((b) => ({ label: b.title, to: `/collections/${b.handle}` })),
+  }));
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -106,7 +134,18 @@ export default function Header() {
   useEffect(() => {
     setMobileOpen(false);
     setHovered(null);
+    setSearchOpen(false);
   }, [pathname]);
+
+  const submitSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!term.trim()) return;
+    navigate(`/shop?q=${encodeURIComponent(term.trim())}`);
+    setSearchOpen(false);
+    setTerm("");
+  };
+
+  const activeMenu = hovered === "Brands" ? brandMenu : hovered ? megaMenu[hovered] : null;
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50" onMouseLeave={() => setHovered(null)}>
@@ -121,7 +160,6 @@ export default function Header() {
         )}
       >
         <div className="container-coutr flex items-center justify-between h-16 lg:h-[72px] gap-6">
-          {/* Mobile burger */}
           <button
             className="lg:hidden text-foreground"
             onClick={() => setMobileOpen(!mobileOpen)}
@@ -130,23 +168,17 @@ export default function Header() {
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
 
-          {/* Logo */}
           <Link to="/" className="flex-shrink-0 mr-auto lg:mr-0">
             <span className="font-serif text-2xl lg:text-[28px] font-medium tracking-[0.02em] text-foreground">
               Coutr<span className="text-accent">.</span>
             </span>
           </Link>
 
-          {/* Desktop nav */}
           <nav className="hidden lg:flex items-center gap-8 mx-auto">
             {primaryLinks.map((label) => (
-              <div
-                key={label}
-                className="h-[72px] flex items-center"
-                onMouseEnter={() => setHovered(label)}
-              >
+              <div key={label} className="h-[72px] flex items-center" onMouseEnter={() => setHovered(label)}>
                 <Link
-                  to={`/collections/${label.toLowerCase()}`}
+                  to={`/collections/${label === "Accessories" ? "accessories" : label === "Shoes" ? "shoes" : label.toLowerCase()}`}
                   className={cn(
                     "text-[13px] tracking-[0.14em] uppercase font-medium transition-colors flex items-center gap-1",
                     hovered === label ? "text-accent" : "text-foreground/85 hover:text-foreground"
@@ -157,20 +189,32 @@ export default function Header() {
                 </Link>
               </div>
             ))}
-            <Link to="/journal" className="text-[13px] tracking-[0.14em] uppercase font-medium text-foreground/85 hover:text-foreground">
-              Journal
-            </Link>
+            <div className="h-[72px] flex items-center" onMouseEnter={() => setHovered("Brands")}>
+              <Link
+                to="/shop"
+                className={cn(
+                  "text-[13px] tracking-[0.14em] uppercase font-medium transition-colors flex items-center gap-1",
+                  hovered === "Brands" ? "text-accent" : "text-foreground/85 hover:text-foreground"
+                )}
+              >
+                Brands
+                <ChevronDown className="w-3 h-3 opacity-60" />
+              </Link>
+            </div>
           </nav>
 
-          {/* Right icons */}
           <div className="flex items-center gap-3 sm:gap-5 flex-shrink-0">
-            <button aria-label="Search" className="hidden sm:flex text-foreground/85 hover:text-accent transition-colors">
-              <Search className="w-[18px] h-[18px]" strokeWidth={1.6} />
+            <button
+              aria-label="Search"
+              onClick={() => setSearchOpen((v) => !v)}
+              className="flex text-foreground/85 hover:text-accent transition-colors"
+            >
+              {searchOpen ? <X className="w-[18px] h-[18px]" /> : <Search className="w-[18px] h-[18px]" strokeWidth={1.6} />}
             </button>
-            <Link to="/account" aria-label="Account" className="hidden sm:flex text-foreground/85 hover:text-accent transition-colors">
+            <Link to="/about" aria-label="Account" className="hidden sm:flex text-foreground/85 hover:text-accent transition-colors">
               <User className="w-[18px] h-[18px]" strokeWidth={1.6} />
             </Link>
-            <Link to="/wishlist" aria-label="Wishlist" className="hidden sm:flex text-foreground/85 hover:text-accent transition-colors">
+            <Link to="/shop" aria-label="Wishlist" className="hidden sm:flex text-foreground/85 hover:text-accent transition-colors">
               <Heart className="w-[18px] h-[18px]" strokeWidth={1.6} />
             </Link>
             <button
@@ -188,14 +232,33 @@ export default function Header() {
           </div>
         </div>
 
-        {/* Mega menu */}
-        {hovered && megaMenu[hovered] && (
+        {searchOpen && (
+          <div className="border-t border-border bg-background animate-fade-in">
+            <form onSubmit={submitSearch} className="container-coutr py-4 flex gap-2">
+              <input
+                autoFocus
+                value={term}
+                onChange={(e) => setTerm(e.target.value)}
+                placeholder="Search products, brands, categories…"
+                className="flex-1 h-11 px-5 rounded-full bg-warm border border-border text-sm focus:outline-none focus:border-accent"
+              />
+              <button
+                type="submit"
+                className="h-11 px-6 rounded-full bg-primary text-primary-foreground text-xs uppercase tracking-widest"
+              >
+                Search
+              </button>
+            </form>
+          </div>
+        )}
+
+        {activeMenu && (
           <div
             className="hidden lg:block absolute top-full left-0 right-0 bg-background border-t border-border shadow-elegant animate-fade-in"
             onMouseEnter={() => setHovered(hovered)}
           >
             <div className="container-coutr py-10 grid grid-cols-4 gap-10">
-              {megaMenu[hovered].map((col) => (
+              {activeMenu.map((col) => (
                 <div key={col.title}>
                   <h4 className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-4 font-medium">
                     {col.title}
@@ -203,10 +266,7 @@ export default function Header() {
                   <ul className="space-y-2.5">
                     {col.links.map((l) => (
                       <li key={l.to}>
-                        <Link
-                          to={l.to}
-                          className="text-[14px] text-foreground/85 hover:text-accent transition-colors"
-                        >
+                        <Link to={l.to} className="text-[14px] text-foreground/85 hover:text-accent transition-colors">
                           {l.label}
                         </Link>
                       </li>
@@ -221,11 +281,8 @@ export default function Header() {
                     The New Season Collection
                   </h4>
                 </div>
-                <Link
-                  to={`/collections/${hovered.toLowerCase()}`}
-                  className="story-link text-sm text-foreground mt-4 w-fit"
-                >
-                  Shop now →
+                <Link to="/shop" className="story-link text-sm text-foreground mt-4 w-fit">
+                  Shop all →
                 </Link>
               </div>
             </div>
@@ -233,25 +290,36 @@ export default function Header() {
         )}
       </div>
 
-      {/* Mobile drawer */}
       {mobileOpen && (
         <div className="lg:hidden bg-background border-t border-border animate-fade-in max-h-[calc(100vh-6rem)] overflow-y-auto">
           <nav className="container-coutr py-6 space-y-4">
             {primaryLinks.map((label) => (
-              <Link
-                key={label}
-                to={`/collections/${label.toLowerCase()}`}
-                className="block text-lg font-serif text-foreground py-2 border-b border-border"
-              >
-                {label}
-              </Link>
+              <div key={label} className="border-b border-border pb-3">
+                <Link
+                  to={`/collections/${label.toLowerCase()}`}
+                  className="block text-lg font-serif text-foreground py-2"
+                >
+                  {label}
+                </Link>
+                <div className="flex flex-wrap gap-2 pb-1">
+                  {(megaMenu[label]?.[0]?.links ?? []).slice(1, 5).map((l) => (
+                    <Link
+                      key={l.to}
+                      to={l.to}
+                      className="text-xs uppercase tracking-widest border border-border rounded-full px-3 h-8 inline-flex items-center"
+                    >
+                      {l.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
             ))}
-            <Link to="/journal" className="block text-lg font-serif text-foreground py-2 border-b border-border">
-              Journal
+            <Link to="/shop" className="block text-lg font-serif text-foreground py-2 border-b border-border">
+              All Products
             </Link>
             <div className="flex gap-6 pt-4 text-sm text-muted-foreground">
-              <Link to="/account">Account</Link>
-              <Link to="/wishlist">Wishlist</Link>
+              <Link to="/about">About</Link>
+              <Link to="/contact">Contact</Link>
               <button onClick={() => { openCart(); setMobileOpen(false); }}>Cart</button>
             </div>
           </nav>
