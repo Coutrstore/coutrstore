@@ -2,7 +2,7 @@ import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Heart, Loader2, Truck, RotateCcw, ShieldCheck, Ruler, Star, ChevronRight } from "lucide-react";
-import { fetchProductByHandle, fetchProducts, ShopifyProduct } from "@/lib/shopify";
+import { fetchProductByHandle, fetchRelatedProducts, formatPrice, CatalogProduct } from "@/lib/catalog";
 import { useCartStore } from "@/stores/cartStore";
 import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
@@ -28,8 +28,9 @@ export default function ProductDetail() {
   });
 
   const { data: related = [] } = useQuery({
-    queryKey: ["products", "related"],
-    queryFn: () => fetchProducts(4),
+    queryKey: ["products", "related", slug],
+    queryFn: () => fetchRelatedProducts(product!, 4),
+    enabled: !!product,
   });
 
   const selectedVariant = useMemo(() => {
@@ -76,16 +77,15 @@ export default function ProductDetail() {
   const onSale = compareAt && parseFloat(compareAt.amount) > parseFloat(price.amount);
   const soldOut = !selectedVariant?.availableForSale;
 
-  const handleAdd = async () => {
-    if (!selectedVariant || soldOut) return;
-    // Ensure all required options are selected
+  const handleAdd = () => {
+    if (!selectedVariant || soldOut) return false;
     const missing = product.options.filter((o) => o.values.length > 1 && !selectedOptions[o.name]);
     if (missing.length > 0) {
       toast.error(`Please select ${missing.map((m) => m.name).join(", ")}`, { position: "top-center" });
-      return;
+      return false;
     }
-    const productWrapper: ShopifyProduct = { node: product };
-    await addItem({
+    const productWrapper: CatalogProduct = { node: product };
+    addItem({
       product: productWrapper,
       variantId: selectedVariant.id,
       variantTitle: selectedVariant.title,
@@ -94,11 +94,11 @@ export default function ProductDetail() {
       selectedOptions: selectedVariant.selectedOptions,
     });
     toast.success("Added to your cart", { position: "top-center" });
+    return true;
   };
 
-  const handleBuyNow = async () => {
-    await handleAdd();
-    openCart();
+  const handleBuyNow = () => {
+    if (handleAdd()) openCart();
   };
 
   return (
