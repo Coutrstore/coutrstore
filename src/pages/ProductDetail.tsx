@@ -36,13 +36,22 @@ export default function ProductDetail() {
   const selectedVariant = useMemo(() => {
     if (!product) return null;
     const variants = product.variants.edges;
-    if (Object.keys(selectedOptions).length === 0) return variants[0]?.node ?? null;
-    return (
-      variants.find((v) =>
-        v.node.selectedOptions.every((o) => selectedOptions[o.name] === o.value)
-      )?.node ?? variants[0]?.node ?? null
+    const firstAvailable = variants.find((v) => v.node.availableForSale)?.node ?? variants[0]?.node ?? null;
+    if (Object.keys(selectedOptions).length === 0) return firstAvailable;
+    const matches = variants.filter((v) =>
+      v.node.selectedOptions.every((o) => !selectedOptions[o.name] || selectedOptions[o.name] === o.value)
     );
+    return matches.find((v) => v.node.availableForSale)?.node ?? matches[0]?.node ?? firstAvailable;
   }, [product, selectedOptions]);
+
+  const valueAvailable = (name: string, value: string) => {
+    if (!product) return false;
+    return product.variants.edges.some(
+      (v) =>
+        v.node.availableForSale &&
+        v.node.selectedOptions.some((o) => o.name === name && o.value === value)
+    );
+  };
 
   if (loadingProduct) {
     return (
