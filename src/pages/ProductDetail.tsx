@@ -2,7 +2,7 @@ import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Heart, Loader2, Truck, RotateCcw, ShieldCheck, Ruler, Star, ChevronRight } from "lucide-react";
-import { fetchProductByHandle, fetchProducts, ShopifyProduct } from "@/lib/shopify";
+import { fetchProductByHandle, fetchRelatedProducts, formatPrice, CatalogProduct } from "@/lib/catalog";
 import { useCartStore } from "@/stores/cartStore";
 import ProductCard from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
@@ -28,20 +28,30 @@ export default function ProductDetail() {
   });
 
   const { data: related = [] } = useQuery({
-    queryKey: ["products", "related"],
-    queryFn: () => fetchProducts(4),
+    queryKey: ["products", "related", slug],
+    queryFn: () => fetchRelatedProducts(product!, 4),
+    enabled: !!product,
   });
 
   const selectedVariant = useMemo(() => {
     if (!product) return null;
     const variants = product.variants.edges;
-    if (Object.keys(selectedOptions).length === 0) return variants[0]?.node ?? null;
-    return (
-      variants.find((v) =>
-        v.node.selectedOptions.every((o) => selectedOptions[o.name] === o.value)
-      )?.node ?? variants[0]?.node ?? null
+    const firstAvailable = variants.find((v) => v.node.availableForSale)?.node ?? variants[0]?.node ?? null;
+    if (Object.keys(selectedOptions).length === 0) return firstAvailable;
+    const matches = variants.filter((v) =>
+      v.node.selectedOptions.every((o) => !selectedOptions[o.name] || selectedOptions[o.name] === o.value)
     );
+    return matches.find((v) => v.node.availableForSale)?.node ?? matches[0]?.node ?? firstAvailable;
   }, [product, selectedOptions]);
+
+  const valueAvailable = (name: string, value: string) => {
+    if (!product) return false;
+    return product.variants.edges.some(
+      (v) =>
+        v.node.availableForSale &&
+        v.node.selectedOptions.some((o) => o.name === name && o.value === value)
+    );
+  };
 
   if (loadingProduct) {
     return (
@@ -76,16 +86,15 @@ export default function ProductDetail() {
   const onSale = compareAt && parseFloat(compareAt.amount) > parseFloat(price.amount);
   const soldOut = !selectedVariant?.availableForSale;
 
-  const handleAdd = async () => {
-    if (!selectedVariant || soldOut) return;
-    // Ensure all required options are selected
+  const handleAdd = () => {
+    if (!selectedVariant || soldOut) return false;
     const missing = product.options.filter((o) => o.values.length > 1 && !selectedOptions[o.name]);
     if (missing.length > 0) {
       toast.error(`Please select ${missing.map((m) => m.name).join(", ")}`, { position: "top-center" });
-      return;
+      return false;
     }
-    const productWrapper: ShopifyProduct = { node: product };
-    await addItem({
+    const productWrapper: CatalogProduct = { node: product };
+    addItem({
       product: productWrapper,
       variantId: selectedVariant.id,
       variantTitle: selectedVariant.title,
@@ -94,11 +103,11 @@ export default function ProductDetail() {
       selectedOptions: selectedVariant.selectedOptions,
     });
     toast.success("Added to your cart", { position: "top-center" });
+    return true;
   };
 
-  const handleBuyNow = async () => {
-    await handleAdd();
-    openCart();
+  const handleBuyNow = () => {
+    if (handleAdd()) openCart();
   };
 
   return (
@@ -183,15 +192,17 @@ export default function ProductDetail() {
 
           <div className="flex items-baseline gap-3 mt-5">
             <span className="text-2xl font-medium text-foreground">
-              {price.currencyCode} {parseFloat(price.amount).toFixed(2)}
+              {formatPrice(price.amount, price.currencyCode)}
             </span>
             {onSale && compareAt && (
               <span className="text-lg text-muted-foreground line-through">
-                {compareAt.currencyCode} {parseFloat(compareAt.amount).toFixed(2)}
+                {formatPrice(compareAt.amount, compareAt.currencyCode)}
               </span>
             )}
           </div>
-          <p className="text-xs text-muted-foreground mt-1">Tax included. Shipping calculated at checkout.</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Taxes and shipping confirmed with our team on WhatsApp.
+          </p>
 
           <div className="mt-6 space-y-5">
             {product.options.filter((o) => o.values.length > 1).map((opt) => (
@@ -210,19 +221,22 @@ export default function ProductDetail() {
                   {opt.values.map((v) => {
                     const active = selectedOptions[opt.name] === v;
                     const isColor = opt.name.toLowerCase().includes("color") || opt.name.toLowerCase().includes("colour");
+                    const available = valueAvailable(opt.name, v);
                     return (
                       <button
                         key={v}
+                        disabled={!available}
                         onClick={() => setSelectedOptions((prev) => ({ ...prev, [opt.name]: v }))}
                         className={cn(
                           "border rounded-md text-xs uppercase tracking-widest transition-all",
                           isColor ? "w-10 h-10 rounded-full flex items-center justify-center p-1" : "h-10 px-4 min-w-[3rem]",
                           active
                             ? "border-foreground ring-2 ring-foreground ring-offset-2"
-                            : "border-border hover:border-foreground"
+                            : "border-border hover:border-foreground",
+                          !available && "opacity-40 line-through cursor-not-allowed hover:border-border"
                         )}
                         style={isColor ? { backgroundColor: v.toLowerCase() } : {}}
-                        title={v}
+                        title={available ? v : `${v} — out of stock`}
                       >
                         {!isColor && v}
                       </button>
@@ -300,7 +314,14 @@ export default function ProductDetail() {
             <AccordionItem value="desc">
               <AccordionTrigger className="text-sm uppercase tracking-widest">Description</AccordionTrigger>
               <AccordionContent className="text-sm leading-relaxed text-muted-foreground">
-                {product.description || "No description available."}
+                {product.descriptionHtml ? (
+                  <div
+                    className="prose-sm [&_ul]:list-disc [&_ul]:pl-5 [&_p]:mb-2 space-y-2"
+                    dangerouslySetInnerHTML={{ __html: product.descriptionHtml }}
+                  />
+                ) : (
+                  product.description || "No description available."
+                )}
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="materials">

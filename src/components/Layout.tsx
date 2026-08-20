@@ -3,11 +3,9 @@ import Header from "./Header";
 import Footer from "./Footer";
 import ScrollToTop from "./ScrollToTop";
 import CartDrawer from "./CartDrawer";
-import { useCartSync } from "@/hooks/useCartSync";
 import ScrollTopButton from "./ScrollTopButton";
 
 export default function Layout() {
-  useCartSync();
   return (
     <div className="min-h-screen flex flex-col">
       <ScrollToTop />
