@@ -183,15 +183,17 @@ export default function ProductDetail() {
 
           <div className="flex items-baseline gap-3 mt-5">
             <span className="text-2xl font-medium text-foreground">
-              {price.currencyCode} {parseFloat(price.amount).toFixed(2)}
+              {formatPrice(price.amount, price.currencyCode)}
             </span>
             {onSale && compareAt && (
               <span className="text-lg text-muted-foreground line-through">
-                {compareAt.currencyCode} {parseFloat(compareAt.amount).toFixed(2)}
+                {formatPrice(compareAt.amount, compareAt.currencyCode)}
               </span>
             )}
           </div>
-          <p className="text-xs text-muted-foreground mt-1">Tax included. Shipping calculated at checkout.</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Taxes and shipping confirmed with our team on WhatsApp.
+          </p>
 
           <div className="mt-6 space-y-5">
             {product.options.filter((o) => o.values.length > 1).map((opt) => (
@@ -300,7 +302,14 @@ export default function ProductDetail() {
             <AccordionItem value="desc">
               <AccordionTrigger className="text-sm uppercase tracking-widest">Description</AccordionTrigger>
               <AccordionContent className="text-sm leading-relaxed text-muted-foreground">
-                {product.description || "No description available."}
+                {product.descriptionHtml ? (
+                  <div
+                    className="prose-sm [&_ul]:list-disc [&_ul]:pl-5 [&_p]:mb-2 space-y-2"
+                    dangerouslySetInnerHTML={{ __html: product.descriptionHtml }}
+                  />
+                ) : (
+                  product.description || "No description available."
+                )}
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="materials">
