@@ -221,19 +221,22 @@ export default function ProductDetail() {
                   {opt.values.map((v) => {
                     const active = selectedOptions[opt.name] === v;
                     const isColor = opt.name.toLowerCase().includes("color") || opt.name.toLowerCase().includes("colour");
+                    const available = valueAvailable(opt.name, v);
                     return (
                       <button
                         key={v}
+                        disabled={!available}
                         onClick={() => setSelectedOptions((prev) => ({ ...prev, [opt.name]: v }))}
                         className={cn(
                           "border rounded-md text-xs uppercase tracking-widest transition-all",
                           isColor ? "w-10 h-10 rounded-full flex items-center justify-center p-1" : "h-10 px-4 min-w-[3rem]",
                           active
                             ? "border-foreground ring-2 ring-foreground ring-offset-2"
-                            : "border-border hover:border-foreground"
+                            : "border-border hover:border-foreground",
+                          !available && "opacity-40 line-through cursor-not-allowed hover:border-border"
                         )}
                         style={isColor ? { backgroundColor: v.toLowerCase() } : {}}
-                        title={v}
+                        title={available ? v : `${v} — out of stock`}
                       >
                         {!isColor && v}
                       </button>
