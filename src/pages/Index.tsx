@@ -7,7 +7,7 @@ import catWomen from "@/assets/coutr/cat-women.jpg";
 import catShoes from "@/assets/coutr/cat-shoes.jpg";
 import catAcc from "@/assets/coutr/cat-accessories.jpg";
 import lookbook from "@/assets/coutr/lookbook.jpg";
-import { fetchProducts } from "@/lib/shopify";
+import { fetchProducts } from "@/lib/catalog";
 import ProductCard from "@/components/ProductCard";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -19,12 +19,12 @@ const categories = [
 ];
 
 const styles = [
-  { label: "Streetwear", to: "/collections/men?style=streetwear" },
-  { label: "Casual", to: "/collections/men?style=casual" },
-  { label: "Formal", to: "/collections/men?style=formal" },
-  { label: "Luxury", to: "/collections/men?style=luxury" },
-  { label: "Sneakers", to: "/collections/shoes?type=sneakers" },
-  { label: "Summer", to: "/collections/women?style=summer" },
+  { label: "Sneakers", to: "/collections/type-sneakers" },
+  { label: "Outerwear", to: "/collections/type-jackets" },
+  { label: "Tailoring", to: "/collections/type-blazers" },
+  { label: "Dresses", to: "/collections/type-dresses" },
+  { label: "Handbags", to: "/collections/bags" },
+  { label: "Eyewear", to: "/collections/eyewear" },
 ];
 
 const perks = [
@@ -36,10 +36,11 @@ const perks = [
 ];
 
 export default function Index() {
-  const { data: products = [], isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["products", "featured"],
-    queryFn: () => fetchProducts(8),
+    queryFn: () => fetchProducts({ pageSize: 8, sort: "featured" }),
   });
+  const products = data?.products ?? [];
 
   return (
     <>
@@ -157,7 +158,7 @@ export default function Index() {
             <div className="text-center py-16 bg-background rounded-lg border border-border">
               <p className="font-serif text-2xl mb-2">No products found</p>
               <p className="text-muted-foreground text-sm max-w-md mx-auto">
-                Your Coutr Store is set up but has no products yet. Ask me to create products in the chat — just tell me the product name and price.
+                We couldn't load the collection right now. Please refresh to try again.
               </p>
             </div>
           ) : (
