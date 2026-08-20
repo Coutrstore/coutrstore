@@ -1,29 +1,16 @@
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Minus, Plus, Trash2, ShoppingBag, Loader2, ShieldCheck, Truck } from "lucide-react";
+import { Minus, Plus, Trash2, ShoppingBag, ShieldCheck, Truck } from "lucide-react";
 import { useCartStore } from "@/stores/cartStore";
-import { useEffect } from "react";
+import { openWhatsAppCheckout } from "@/lib/whatsapp";
+import { formatPrice } from "@/lib/catalog";
 import { Link } from "react-router-dom";
 
 const FREE_SHIPPING_THRESHOLD = 150;
 
 export default function CartDrawer() {
-  const {
-    items,
-    isOpen,
-    isLoading,
-    isSyncing,
-    setOpen,
-    updateQuantity,
-    removeItem,
-    getCheckoutUrl,
-    syncCart,
-  } = useCartStore();
-
-  useEffect(() => {
-    if (isOpen) syncCart();
-  }, [isOpen, syncCart]);
+  const { items, isOpen, setOpen, updateQuantity, removeItem } = useCartStore();
 
   const totalItems = items.reduce((s, i) => s + i.quantity, 0);
   const subtotal = items.reduce((s, i) => s + parseFloat(i.price.amount) * i.quantity, 0);
@@ -32,11 +19,8 @@ export default function CartDrawer() {
   const remaining = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
 
   const handleCheckout = () => {
-    const url = getCheckoutUrl();
-    if (url) {
-      window.open(url, "_blank");
-      setOpen(false);
-    }
+    openWhatsAppCheckout(items);
+    setOpen(false);
   };
 
   return (
@@ -53,7 +37,7 @@ export default function CartDrawer() {
           <div className="px-6 py-4 border-b border-border bg-warm">
             {remaining > 0 ? (
               <p className="text-sm text-foreground mb-2">
-                Add <span className="font-medium">{currency} {remaining.toFixed(2)}</span> more for
+                Add <span className="font-medium">{formatPrice(remaining, currency)}</span> more for
                 <span className="text-accent"> free shipping</span>
               </p>
             ) : (
@@ -113,7 +97,7 @@ export default function CartDrawer() {
                           </p>
                         )}
                         <p className="text-sm font-medium text-foreground mt-1">
-                          {item.price.currencyCode} {parseFloat(item.price.amount).toFixed(2)}
+                          {formatPrice(item.price.amount, item.price.currencyCode)}
                         </p>
                         <div className="flex items-center gap-3 mt-3">
                           <div className="flex items-center border border-border rounded-full">
@@ -150,20 +134,21 @@ export default function CartDrawer() {
             <div className="border-t border-border bg-background px-6 py-5 space-y-4">
               <div className="flex justify-between items-baseline">
                 <span className="text-sm uppercase tracking-widest text-muted-foreground">Subtotal</span>
-                <span className="font-serif text-2xl">{currency} {subtotal.toFixed(2)}</span>
+                <span className="font-serif text-2xl">{formatPrice(subtotal, currency)}</span>
               </div>
-              <p className="text-xs text-muted-foreground">Taxes and shipping calculated at checkout.</p>
+              <p className="text-xs text-muted-foreground">
+                Shipping and payment are confirmed with our team on WhatsApp.
+              </p>
               <Button
                 onClick={handleCheckout}
-                disabled={isLoading || isSyncing}
                 size="lg"
-                className="w-full rounded-full h-12 text-sm tracking-widest uppercase"
+                className="w-full rounded-full h-12 text-sm tracking-widest uppercase bg-[#25D366] text-white hover:bg-[#1eb757]"
               >
-                {isLoading || isSyncing ? <Loader2 className="w-4 h-4 animate-spin" /> : "Secure Checkout"}
+                Checkout on WhatsApp
               </Button>
               <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Encrypted & secure — powered by Shopify</span>
+                <span>Your order is confirmed by a Coutr stylist</span>
               </div>
             </div>
           </>
